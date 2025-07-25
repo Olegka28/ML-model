@@ -33,6 +33,14 @@ class FeatureConfig:
     cache_features: bool = True
     validate_features: bool = True
     handle_inf_nan: bool = True
+    
+    # Настройки фильтрации признаков
+    use_feature_selection: bool = True  # Использовать фильтрацию признаков
+    selection_method: str = 'mutual_info'  # permutation, correlation, mutual_info, combined, recursive, stability
+    selection_threshold: float = 0.001  # Порог для отбора признаков (адаптирован для финансовых данных)
+    remove_correlated_features: bool = True  # Удалять коррелированные признаки
+    correlation_threshold: float = 0.85  # Порог корреляции для удаления (более строгий)
+    n_features: Optional[int] = 30  # Максимальное количество признаков (оптимизировано)
 
 @dataclass
 class ModelConfig:
@@ -125,7 +133,13 @@ class Config:
                 'roll_windows': self.features.roll_windows,
                 'cache_features': self.features.cache_features,
                 'validate_features': self.features.validate_features,
-                'handle_inf_nan': self.features.handle_inf_nan
+                'handle_inf_nan': self.features.handle_inf_nan,
+                'use_feature_selection': self.features.use_feature_selection,
+                'selection_method': self.features.selection_method,
+                'selection_threshold': self.features.selection_threshold,
+                'remove_correlated_features': self.features.remove_correlated_features,
+                'correlation_threshold': self.features.correlation_threshold,
+                'n_features': self.features.n_features
             },
             'model': {
                 'model_type': self.model.model_type,

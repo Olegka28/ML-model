@@ -294,8 +294,8 @@ def main():
     parser = argparse.ArgumentParser(description='🚀 Обучение ML моделей для торговли')
     parser.add_argument('action', choices=['train', 'list', 'info'], 
                        help='Действие: train - обучение, list - список моделей, info - информация о модели')
-    parser.add_argument('--symbol', '-s', default='SOL_USDT',
-                       help='Символ монеты (по умолчанию: SOL_USDT)')
+    parser.add_argument('--symbol', '-s', default='SOLUSDT',
+                       help='Символ монеты (по умолчанию: SOLUSDT)')
     parser.add_argument('--task', '-t', choices=['regression', 'classification'], 
                        default='regression', help='Тип задачи (по умолчанию: regression)')
     parser.add_argument('--target', choices=['crypto_clipped', 'volume_weighted', 'vol_regime', 'market_regime', 'momentum_enhanced', 'volume_volatility'],

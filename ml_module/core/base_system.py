@@ -187,6 +187,51 @@ class BaseSystem:
             self.logger.error(f"❌ Ошибка генерации признаков: {e}")
             raise
     
+    def generate_and_select_features(self, data: Dict[str, pd.DataFrame], 
+                                   target: pd.Series,
+                                   feature_config: Optional[Dict] = None) -> pd.DataFrame:
+        """
+        Генерация и фильтрация признаков
+        
+        Args:
+            data: Словарь с данными по таймфреймам
+            target: Series с таргетом
+            feature_config: Конфигурация признаков (опционально)
+            
+        Returns:
+            DataFrame с отфильтрованными признаками
+        """
+        # Генерируем все признаки
+        features = self.generate_and_validate_features(data, feature_config)
+        
+        # Выравниваем размеры features и target
+        common_index = features.index.intersection(target.index)
+        features = features.loc[common_index]
+        target = target.loc[common_index]
+        
+        # Фильтрация признаков (если включена в конфигурации)
+        if self.config.features.use_feature_selection:
+            self.logger.info("🔍 Фильтрация признаков...")
+            selected_features = self.feature_manager.select_features(
+                features=features,
+                target=target,
+                method=self.config.features.selection_method,
+                threshold=self.config.features.selection_threshold,
+                remove_correlated=self.config.features.remove_correlated_features,
+                correlation_threshold=self.config.features.correlation_threshold,
+                n_features=self.config.features.n_features
+            )
+            
+            if selected_features:
+                # Возвращаем только отфильтрованные признаки
+                features_filtered = features[selected_features]
+                self.logger.info(f"✅ Отобрано {len(selected_features)} признаков из {len(features.columns)}")
+                return features_filtered
+            else:
+                self.logger.warning("⚠️ Не удалось отобрать признаки, используем все")
+        
+        return features
+    
     def create_target(self, df: pd.DataFrame, target_type: str, horizon: int) -> pd.Series:
         """
         Создание целевой переменной

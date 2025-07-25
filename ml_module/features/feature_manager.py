@@ -541,10 +541,10 @@ class FeatureManager:
         )
         model.fit(features, target)
         
-        # Рассчитываем permutation importance с большим количеством повторений
+        # Рассчитываем permutation importance с оптимизированными параметрами
         perm_importance = permutation_importance(
             model, features, target, 
-            n_repeats=20,  # Больше повторений для стабильности
+            n_repeats=5,   # Уменьшаем для скорости
             random_state=42,
             n_jobs=-1
         )
@@ -562,11 +562,6 @@ class FeatureManager:
         
         # Сортируем по важности
         selected_features.sort(key=lambda x: perm_importance.importances_mean[features.columns.get_loc(x)], reverse=True)
-        
-        # Сортируем по важности (корреляции)
-        if selected_features:
-            correlations_selected = correlations[selected_features].sort_values(ascending=False)
-            selected_features = correlations_selected.index.tolist()
         
         self.logger.info(f"✅ Отобрано {len(selected_features)} признаков из {len(features.columns)}")
         return selected_features
@@ -671,13 +666,19 @@ class FeatureManager:
         """
         self.logger.info("🔄 Комбинированный отбор признаков")
         
-        # Получаем результаты всех методов
-        methods = ['permutation', 'correlation', 'mutual_info']
+        # Получаем результаты всех методов с таймаутом для медленных
+        methods = ['correlation', 'mutual_info', 'permutation']  # correlation самый быстрый
         selected_sets = []
         
         for method in methods:
             try:
+                self.logger.info(f"   Запуск метода {method}...")
+                
                 if method == 'permutation':
+                    # Для permutation используем только если данных не слишком много
+                    if len(features) > 50000:  # Если больше 50k строк, пропускаем permutation
+                        self.logger.info(f"   Пропускаем {method} (слишком много данных)")
+                        continue
                     selected = self._select_features_permutation(features, target, threshold)
                 elif method == 'correlation':
                     selected = self._select_features_correlation(features, target, threshold)

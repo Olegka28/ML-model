@@ -53,19 +53,26 @@ class RegressionSystem(BaseSystem):
             
             # 3. Создание таргета
             self.logger.info("🎯 Шаг 3: Создание таргета...")
-            target = self.create_target(features, target_type, horizon)
+            target = self.create_target(data['15m'], target_type, horizon)
             
-            # 4. Подготовка данных
-            self.logger.info("🔧 Шаг 4: Подготовка данных...")
+            # 4. Фильтрация признаков (если включена)
+            if self.config.features.use_feature_selection:
+                self.logger.info("🔍 Шаг 4: Фильтрация признаков...")
+                features = self.generate_and_select_features(data, target)
+            else:
+                self.logger.info("🔍 Шаг 4: Пропускаем фильтрацию признаков...")
+            
+            # 5. Подготовка данных для обучения
+            self.logger.info("🔧 Шаг 5: Подготовка данных...")
             X, y, feature_names = self.prepare_training_data(features, target)
             
-            # 5. Обучение модели (ИСПРАВЛЕНО: добавлен task='regression')
-            self.logger.info("🤖 Шаг 5: Обучение модели...")
+            # 6. Обучение модели (ИСПРАВЛЕНО: добавлен task='regression')
+            self.logger.info("🤖 Шаг 6: Обучение модели...")
             model, metadata = self.train_model(X, y, feature_names, task='regression')
             
-            # 6. Сохранение модели (ИСПРАВЛЕНО: добавлен task='regression')
-            self.logger.info("💾 Шаг 6: Сохранение модели...")
-            self.save_model(model, metadata, symbol, task='regression')
+            # 7. Сохранение модели (ИСПРАВЛЕНО: добавлен task='regression')
+            self.logger.info("💾 Шаг 7: Сохранение модели...")
+            model_path = self.save_model(model, metadata, symbol, task='regression')
             
             # 7. Возврат метрик
             self.logger.info("✅ Эксперимент завершен успешно")
@@ -104,12 +111,48 @@ class RegressionSystem(BaseSystem):
         self.logger.info(f"🔮 Получение предсказания для {symbol} ({timeframe})")
         
         try:
-            # Генерируем признаки для последних данных
-            self.logger.info("🔬 Генерация признаков для предсказания...")
-            features = self.feature_manager.generate_features({timeframe: latest_data})
+            # Загружаем модель для получения метаданных
+            model, metadata = self.load_model(symbol, task='regression')
+            expected_features = metadata.get('features', [])
             
-            # Получаем предсказание (ИСПРАВЛЕНО: добавлен task='regression')
-            prediction, confidence = self.predict(symbol, features, task='regression')
+            if not expected_features:
+                self.logger.error("❌ Не найдены признаки в метаданных модели")
+                return None
+            
+            # Проверяем, какие таймфреймы нужны для признаков
+            timeframes_needed = set()
+            for feature in expected_features:
+                if '_1h' in feature:
+                    timeframes_needed.add('1h')
+                elif '_4h' in feature:
+                    timeframes_needed.add('4h')
+                elif '_1d' in feature:
+                    timeframes_needed.add('1d')
+                else:
+                    timeframes_needed.add('15m')  # По умолчанию
+            
+            # Загружаем данные для всех нужных таймфреймов
+            self.logger.info(f"📊 Загрузка данных для таймфреймов: {list(timeframes_needed)}")
+            data = self.load_and_validate_data(symbol, list(timeframes_needed))
+            
+            # Генерируем признаки для всех таймфреймов
+            self.logger.info("🔬 Генерация признаков для предсказания...")
+            features = self.feature_manager.generate_features(data)
+            
+            # Фильтруем признаки только теми, которые использовались при обучении
+            self.logger.info(f"🔍 Фильтрация признаков для предсказания: {len(expected_features)} признаков")
+            
+            # Проверяем наличие всех нужных признаков
+            missing_features = set(expected_features) - set(features.columns)
+            if missing_features:
+                self.logger.error(f"❌ Отсутствуют признаки: {missing_features}")
+                self.logger.error(f"   Доступные признаки: {list(features.columns)[:10]}...")
+                return None
+            
+            features_filtered = features[expected_features]
+            
+            # Получаем предсказание
+            prediction, confidence = self.predict(symbol, features_filtered, task='regression')
             
             if prediction is None:
                 self.logger.warning(f"⚠️ Не удалось получить предсказание для {symbol}")
