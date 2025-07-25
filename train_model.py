@@ -61,25 +61,33 @@ def train_regression_model(symbol: str, target_type: str = 'crypto_clipped', hor
         baseline = metadata.get('baseline', {})
         if baseline:
             print(f"\n📈 Baseline сравнение:")
-            for baseline_name, baseline_metrics in baseline.items():
-                print(f"   {baseline_name}: RMSE={baseline_metrics.get('rmse', 0):.6f}")
+            if isinstance(baseline, dict):
+                for baseline_name, baseline_metrics in baseline.items():
+                    if isinstance(baseline_metrics, dict):
+                        print(f"   {baseline_name}: RMSE={baseline_metrics.get('rmse', 0):.6f}")
+                    else:
+                        print(f"   {baseline_name}: {baseline_metrics:.6f}")
+            else:
+                print(f"   Baseline RMSE: {baseline:.6f}")
         
         # Тестируем предсказание
         print(f"\n🔮 Тестирование предсказания...")
-        # Получаем последние данные для тестирования
-        from ml_module.data_collector import DataCollector
-        collector = DataCollector()
-        latest_data = collector.get_recent_data(symbol, '15m', 100)
-        
-        if latest_data is not None and not latest_data.empty:
-            prediction_result = system.predict_latest(symbol, latest_data, '15m')
-            if prediction_result:
-                print(f"✅ Предсказание: {prediction_result['prediction']:.6f}")
-                print(f"   Уверенность: {prediction_result['confidence']:.1f}%")
+        # Получаем последние данные для тестирования через систему
+        try:
+            data = system.load_and_validate_data(symbol, ['15m'])
+            latest_data = data['15m'].tail(100)
+            
+            if latest_data is not None and not latest_data.empty:
+                prediction_result = system.predict_latest(symbol, latest_data, '15m')
+                if prediction_result:
+                    print(f"✅ Предсказание: {prediction_result['prediction']:.6f}")
+                    print(f"   Уверенность: {prediction_result['confidence']:.1f}%")
+                else:
+                    print("⚠️ Не удалось получить предсказание")
             else:
-                print("⚠️ Не удалось получить предсказание")
-        else:
-            print("⚠️ Не удалось получить последние данные для тестирования")
+                print("⚠️ Не удалось получить последние данные для тестирования")
+        except Exception as e:
+            print(f"⚠️ Ошибка при тестировании предсказания: {e}")
         
         print(f"\n🎉 Обучение регрессии завершено успешно!")
         return True
@@ -138,20 +146,22 @@ def train_classification_model(symbol: str, percent: float = 0.025, horizon: int
         
         # Тестируем предсказание
         print(f"\n🔮 Тестирование предсказания...")
-        # Получаем последние данные для тестирования
-        from ml_module.data_collector import DataCollector
-        collector = DataCollector()
-        latest_data = collector.get_recent_data(symbol, '15m', 100)
-        
-        if latest_data is not None and not latest_data.empty:
-            prediction_result = system.predict_latest(symbol, latest_data, '15m')
-            if prediction_result:
-                print(f"✅ Предсказание: {prediction_result['prediction_label']} (класс {prediction_result['prediction']})")
-                print(f"   Уверенность: {prediction_result['confidence']:.1f}%")
+        # Получаем последние данные для тестирования через систему
+        try:
+            data = system.load_and_validate_data(symbol, ['15m'])
+            latest_data = data['15m'].tail(100)
+            
+            if latest_data is not None and not latest_data.empty:
+                prediction_result = system.predict_latest(symbol, latest_data, '15m')
+                if prediction_result:
+                    print(f"✅ Предсказание: {prediction_result['prediction_label']} (класс {prediction_result['prediction']})")
+                    print(f"   Уверенность: {prediction_result['confidence']:.1f}%")
+                else:
+                    print("⚠️ Не удалось получить предсказание")
             else:
-                print("⚠️ Не удалось получить предсказание")
-        else:
-            print("⚠️ Не удалось получить последние данные для тестирования")
+                print("⚠️ Не удалось получить последние данные для тестирования")
+        except Exception as e:
+            print(f"⚠️ Ошибка при тестировании предсказания: {e}")
         
         print(f"\n🎉 Обучение классификации завершено успешно!")
         return True

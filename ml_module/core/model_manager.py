@@ -342,12 +342,13 @@ class ModelManager:
             self.logger.error("❌ Не удалось выполнить кросс-валидацию")
             return {}
     
-    def train_model(self, X: np.ndarray, y: np.ndarray, model_config: Optional[dict] = None, task: str = 'regression') -> Tuple[Any, Dict]:
+    def train_model(self, X: np.ndarray, y: np.ndarray, feature_names: Optional[List[str]] = None, model_config: Optional[dict] = None, task: str = 'regression') -> Tuple[Any, Dict]:
         """
         Обучение модели (XGBoost/LightGBM/CatBoost)
         Args:
             X: np.ndarray - признаки
             y: np.ndarray - таргет
+            feature_names: List[str] - названия признаков (опционально)
             model_config: dict - параметры модели
             task: 'regression' или 'classification'
         Returns:
@@ -490,10 +491,14 @@ class ModelManager:
         baseline_models = BaselineModels()
         if task == 'regression':
             baseline_report = baseline_models.create_baseline_report(X_train, y_train, X_val, y_val, 'regression')
-            baseline = baseline_report['best_baseline']['metrics']
+            baseline = {
+                baseline_report['best_baseline']['name']: baseline_report['best_baseline']['metrics']
+            }
         else:
             baseline_report = baseline_models.create_baseline_report(X_train, y_train, X_val, y_val, 'classification')
-            baseline = baseline_report['best_baseline']['metrics']
+            baseline = {
+                baseline_report['best_baseline']['name']: baseline_report['best_baseline']['metrics']
+            }
         # MLflow logging
         with mlflow.start_run(run_name=f"{model_type}_{task}"):
             mlflow.log_params(best_params)
@@ -516,7 +521,8 @@ class ModelManager:
             'symbol': 'SOL_USDT',  # Будет переопределено при сохранении
             'target_type': model_config.get('target_type', self.config.model.target_type),
             'horizon': model_config.get('horizon', self.config.model.horizon),
-            'features': list(range(X.shape[1])),
+            'features': feature_names if feature_names is not None else list(range(X.shape[1])),
+            'features_count': X.shape[1],
             'best_params': best_params,
             'metrics': metrics,
             'baseline': baseline,

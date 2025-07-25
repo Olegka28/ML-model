@@ -61,7 +61,7 @@ class RegressionSystem(BaseSystem):
             
             # 5. Обучение модели (ИСПРАВЛЕНО: добавлен task='regression')
             self.logger.info("🤖 Шаг 5: Обучение модели...")
-            model, metadata = self.train_model(X, y, task='regression')
+            model, metadata = self.train_model(X, y, feature_names, task='regression')
             
             # 6. Сохранение модели (ИСПРАВЛЕНО: добавлен task='regression')
             self.logger.info("💾 Шаг 6: Сохранение модели...")

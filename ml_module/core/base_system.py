@@ -285,6 +285,7 @@ class BaseSystem:
             raise
     
     def train_model(self, X: np.ndarray, y: np.ndarray, 
+                   feature_names: Optional[List[str]] = None,
                    model_config: Optional[Dict] = None, task: str = 'regression') -> Tuple[Any, Dict[str, Any]]:
         """
         Обучение модели
@@ -292,6 +293,7 @@ class BaseSystem:
         Args:
             X: Признаки
             y: Таргет
+            feature_names: Названия признаков (опционально)
             model_config: Конфигурация модели (опционально)
             task: Тип задачи ('regression' или 'classification')
             
@@ -312,7 +314,7 @@ class BaseSystem:
         
         try:
             # Обучаем модель
-            model, metadata = self.model_manager.train_model(X, y, model_config, task)
+            model, metadata = self.model_manager.train_model(X, y, feature_names, model_config, task)
             
             self.logger.info("✅ Модель обучена")
             return model, metadata
